@@ -1,5 +1,16 @@
 pragma solidity ^0.4.23;
 
+contract MasterKTCAddress {
+     function getKTCAddress() returns(address);
+}
+
+
+contract FeeContract  {
+    
+    function buyerofferfee()  returns  ( uint) ;
+    function sellerofferfee() returns ( uint );
+    
+}
 contract KTC_Contract {
     
     
@@ -10,6 +21,8 @@ contract KTC_Contract {
     function whitelist() returns(address);
     function crown() returns(address);
     function feecontract() returns(address);
+    function masteroffercontract() returns (address);
+    function bookingcontrollercontract() returns (address);
     
     
 }
@@ -22,192 +35,20 @@ contract KTCWhitelist {
 }
 
 
-
-
-contract BuyOffer {
+contract MasterOfferContract{
     
-    
-    string public offertype = "Offer to Buy";
-    address public AssetContractAddress;
-    address public OffererAddress;
-    uint public expires;
-    uint public offeramount;
-    uint public sharenumber;
-    
-    address public KTC_Address;
-    KTC_Contract public ktccontract;
-    
-    
-    AssetContract public assetcontract;
-    
-    bool public OfferActive;
-    bool public OfferFunded;
-    uint public offerNumber;
-    
-    
-    modifier onlyOfferer() {
-		require( msg.sender == OffererAddress );
-		_;
-	}
-	
-	event BuyOfferFunded   ( uint offernumber, address _address, uint _amount );
-    event BuyOfferAccepted ( uint offernumber, address _seller,  uint _amount );
-    
-    
-    constructor ( address KTC, address _AssetContractAddress, address _OffererAddress , uint _numberofdays, uint _offeramount, uint _sharenumber, uint _offernumber ) public{
-        
-        KTC_Address = KTC;
-        ktccontract = KTC_Contract ( KTC_Address);
-        
-        AssetContractAddress = _AssetContractAddress;
-        assetcontract = AssetContract( AssetContractAddress );
-        
-        OffererAddress = _OffererAddress;
-        expires = now + ( _numberofdays * 1 days) ;
-        offeramount = _offeramount;
-        OfferActive = true;
-        sharenumber = _sharenumber;
-        offerNumber = _offernumber;
-        
-       
-        
-    }
-    
-    function tokenFallback ( address _address, uint _value, bytes _data  ) public {
-       
-       require ( offeramount == _value );
-       require ( _address == OffererAddress);
-       OfferFunded = true;
-       emit BuyOfferFunded ( offerNumber,  _address,  _value );
-       
-    }
-    
-    function acceptOffer( uint _share, string _dochash ) public returns(bool) {
-        
-        require ( now < expires );
-        require ( OfferActive == true );
-        require ( OffererAddress != msg.sender );
-        
-        
-        if ( sharenumber != 0 ) require ( _share == sharenumber );
-        
-        
-        //require (  assetcontract.isMember( msg.sender) );
-        require (  assetcontract.memberShare( _share ) == msg.sender );
-        
-        OfferActive = false;
-       
-        emit BuyOfferAccepted ( offerNumber,  msg.sender ,  offeramount );
-        
-        
-    
-        ktccontract.transfer( ktccontract.feecontract() , ktccontract.balanceOf(this), "0" ,"", 0 , msg.sender, 0 );
-        
-        assetcontract.updateMember( msg.sender, OffererAddress, _share,  offeramount, _dochash, offerNumber );
-        return true;
-    }
-   
-    function cancelOffer() public onlyOfferer returns( bool ) {
-       
-       require ( OfferActive == true );
-       OfferActive = false;
-       ktccontract.transfer( msg.sender,  ktccontract.balanceOf(this) );
-       return true;
-       
-    }
+    function BuyOfferContract (  address _buyer , uint  _numberofdays, uint  _offeramount, uint  _sharenumber, uint offers, uint currency )returns(address);
+    function SellOfferContract(   address _buyer , uint  _numberofdays, uint  _offeramount, uint  _sharenumber, uint offers, uint currency )returns(address);
 }
 
 
-
-
-contract SellOffer  {
+contract OfferContract{
     
-    
-    string public offertype = "Offer to Sell";
-    address public AssetContractAddress;
-    address public OffererAddress;
-    uint public expires;
-    uint public offeramount;
-    uint public sharenumber;
-    
-    address public KTC_Address;
-    KTC_Contract public ktccontract;
-    
-    
-    AssetContract public assetcontract;
-    
-    bool public OfferActive;
-    uint public offerNumber;
-    
-    
-    modifier onlyOfferer() {
-		require( msg.sender == OffererAddress );
-		_;
-	}
-	
-		
-	
-    event SellOfferAccepted ( uint offernumber, address _seller,  uint _amount );
-    event CancelOffer ( uint offernumber, address _seller,  uint _amount );
-    
-	
-
-    
-    
-    constructor ( address KTC, address _AssetContractAddress, address _OffererAddress , uint _numberofdays, uint _offeramount, uint _sharenumber, uint _offernumber ) public{
-        
-        KTC_Address = KTC;
-        ktccontract = KTC_Contract ( KTC_Address);
-        
-        AssetContractAddress = _AssetContractAddress;
-        assetcontract = AssetContract( AssetContractAddress );
-        
-        OffererAddress = _OffererAddress;
-        expires = now + ( _numberofdays * 1 days) ;
-        offeramount = _offeramount;
-        OfferActive = true;
-        sharenumber = _sharenumber;
-        offerNumber = _offernumber;
-        
-    }
-    
-    
-     function tokenFallback( address sender, uint _value, bytes _data, string  _stringdata, uint _numdata){
-        
-       require ( _value == offeramount );
-       require ( OfferActive == true );
-       require ( now < expires );
-       require ( OffererAddress != sender );
-       
-       bool result = assetcontract.updateMember( OffererAddress , sender , sharenumber, offeramount, _stringdata, offerNumber );
-       
-       
-       if ( result ) {
-       
-          
-           ktccontract.transfer( ktccontract.feecontract() , offeramount, "0" ,"", 0 , OffererAddress, 0 );
-         
-           OfferActive = false;
-          
-           emit SellOfferAccepted ( offerNumber,  msg.sender ,  offeramount );
-           
-       }
-       
-    } 
-   
-
-    function cancelOffer() public onlyOfferer returns( bool ) {
-       
-       require ( OfferActive == true );
-       OfferActive = false;
-     
-       emit CancelOffer ( offerNumber,  msg.sender ,  offeramount );
-       return true;
-        
-    }
+    function isExpired()returns(bool);
     
     
 }
+
 
 
 /*
@@ -235,6 +76,10 @@ contract Offerable {
     uint public offers;
     address[] public offerAddresses;
     
+    address[13] public assetlistings;
+    
+    
+    
     
     struct transaction  {
         
@@ -242,8 +87,8 @@ contract Offerable {
         address seller;
         uint price;
         string dochash;
-        
         uint offernumber;
+        address tradecontract;
         
     }
     
@@ -252,9 +97,9 @@ contract Offerable {
     
     
     
-    function createTransaction ( address _buyer, address _seller, uint _price, string _dochash, uint _offernumber ) internal {
+    function createTransaction ( address _buyer, address _seller, uint _price, string _dochash, uint _offernumber, address _tradecontract ) internal {
         
-        transactions.push (  transaction( _buyer, _seller, _price, _dochash,  _offernumber )  );
+        transactions.push (  transaction( _buyer, _seller, _price, _dochash,  _offernumber , _tradecontract)  );
         emit AssetTrade( _buyer, _seller, _price, _dochash,  _offernumber );
         
     }
@@ -268,7 +113,7 @@ contract AssetContract  is  Offerable  {
     
     address public KTC_Address;
     KTC_Contract public ktccontract;
-    address[] public members;
+    address[]  members;
     string public AssetType;
     uint public AssetNumber;
     
@@ -276,8 +121,9 @@ contract AssetContract  is  Offerable  {
     KTCWhitelist public whitelistcontract;
     
     address public KTCAssetsAddress;
-    KTCAssets public ktcassets;
+    MasterKTCAssets public ktcassets;
     
+    mapping ( uint => uint ) public payments;
     uint[] paymentRef;
       
     
@@ -306,7 +152,7 @@ contract AssetContract  is  Offerable  {
         whitelistcontract = KTCWhitelist ( whiteListContractAddress );
         
         KTCAssetsAddress = _ktcassets;
-        ktcassets = KTCAssets ( KTCAssetsAddress );
+        ktcassets = MasterKTCAssets ( KTCAssetsAddress );
         offers = 0;
         paymentRef.push(0); 
         members.push( 0 );
@@ -315,14 +161,16 @@ contract AssetContract  is  Offerable  {
         }
         
         offerAddresses.push(0x0);
-        transactions.push (  transaction( 0x0, 0x0, 0, "", 0 )  );
+        transactions.push (  transaction( 0x0, 0x0, 0, "", 0, 0x0 )  );
         
     }
     
     function tokenFallback ( address _address, uint _value, bytes _data, string _stringdata, uint256 _numdata ) onlyKTC{
         
         require ( _numdata != 0x0 );
+        require ( _address == ktccontract.bookingcontrollercontract()); 
         paymentRef.push(_numdata);  
+        payments[_numdata] = _value;
         
         
         
@@ -360,16 +208,23 @@ contract AssetContract  is  Offerable  {
 
  
     //Share Number is Optional if they only want a specific share
-    function Buy_Offer ( uint _offeramount, uint _numberofdays, uint _sharenumber ) returns ( address) {
+    function Buy_Offer ( uint _offeramount, uint _numberofdays, uint _sharenumber, uint currency ) payable returns ( address) {
+        
+        
+        FeeContract feecontract = FeeContract( ktccontract.feecontract() );
+        require ( msg.value >= feecontract.buyerofferfee() );
         
         require ( members [_sharenumber ] != msg.sender );
         require ( whitelistcontract.checkAddress ( msg.sender ) );
-        offers++;
         
-      
-        BuyOffer buyoffer = new BuyOffer( KTC_Address, address(this), msg.sender , _numberofdays,  _offeramount, _sharenumber, offers );
-        allOffers[ buyoffer ] = true;
-        offerAddresses.push(buyoffer);
+        offers++;
+        MasterOfferContract buyoffer = MasterOfferContract (ktccontract.masteroffercontract());
+        address offeraddress = buyoffer.BuyOfferContract(  msg.sender , _numberofdays,  _offeramount, _sharenumber, offers, currency );
+        allOffers[ offeraddress ] = true;
+        offerAddresses.push(offeraddress);
+        
+        if ( msg.value > 0 ) ktccontract.feecontract().transfer ( msg.value );
+        
         emit BuyOfferEvent ( msg.sender, _sharenumber, _offeramount );
         return buyoffer;
        
@@ -377,26 +232,53 @@ contract AssetContract  is  Offerable  {
     }  
     
     
-    function Sell_Offer ( uint _offeramount, uint _numberofdays, uint _sharenumber ) returns ( address ){
+    function Sell_Offer ( uint _offeramount, uint _numberofdays, uint _sharenumber, uint currency ) payable returns ( address ){
+        
+    
+        FeeContract feecontract = FeeContract( ktccontract.feecontract() );
+        require ( msg.value >= feecontract.sellerofferfee() );
         
         require ( memberShare ( _sharenumber ) == msg.sender );
+        if ( assetlistings[ _sharenumber ] != 0 ) removeExpiredListing( assetlistings[ _sharenumber ] , _sharenumber );
+        require ( assetlistings[ _sharenumber ] == 0 );
+        
         offers++;
-  
-        SellOffer selloffer = new SellOffer( KTC_Address, address(this), msg.sender , _numberofdays,  _offeramount, _sharenumber, offers );
-        allOffers[ selloffer ] = true;
-        offerAddresses.push(selloffer);
+        MasterOfferContract selloffer = MasterOfferContract (ktccontract.masteroffercontract());  
+        address offeraddress = selloffer.SellOfferContract(   msg.sender , _numberofdays,  _offeramount, _sharenumber, offers, currency );
+        allOffers[ offeraddress ] = true;
+        offerAddresses.push(offeraddress);
+        assetlistings[ _sharenumber ] = offeraddress; 
+        
+        if ( msg.value > 0 )ktccontract.feecontract().transfer ( msg.value );
+        
         emit SellOfferEvent ( msg.sender, _sharenumber, _offeramount );
         return selloffer;
          
         
     }
     
+    function removeListing( uint _sharenumber )   {
+        
+        require ( msg.sender == assetlistings[ _sharenumber ] );
+        assetlistings[ _sharenumber ] = 0;
+        
+    }
+    
+    function removeExpiredListing( address _address, uint _sharenumber ) internal {
+        
+        OfferContract offercontract = OfferContract ( _address );
+        if ( offercontract.isExpired() ) assetlistings[ _sharenumber ] = 0;
+        
+    }
+    
+  
+    
     
     function updateMember( address _oldmember, address _newmember, uint _numbershare, uint _price, string _dochash, uint _offernumber )  onlyOffers returns(bool) {
         
         require ( whitelistcontract.checkAddress ( _newmember ) == true );
         require ( members[_numbershare] == _oldmember );
-        createTransaction ( _newmember, _oldmember,  _price,  _dochash ,  _offernumber );
+        createTransaction ( _newmember, _oldmember,  _price,  _dochash ,  _offernumber, msg.sender );
         
         members[_numbershare] = _newmember;
         ktcassets.addTrade ( _newmember, _oldmember, _price, _offernumber );
@@ -468,7 +350,8 @@ contract MasterKTCAssets{
     
     constructor(){
         
-        KTC_Address = ; // Add KTC Master Address Contract
+        MasterKTCAddress masterktcaddress = MasterKTCAddress ( 0x947b5bd2c425b7393e212bea75e733d02f4071f1 );
+        KTC_Address = masterktcaddress.getKTCAddress();
         ktccontract = KTC_Contract ( KTC_Address);
         AssetType.push("RealEstate");
         AssetType.push("Aircraft");
@@ -504,6 +387,12 @@ contract MasterKTCAssets{
             if( keccak256(AssetType[i]) == keccak256( _string ) ){ return true;}
         }
         return false;
+        
+    }
+    
+    function isKTCAsset( address _address ) returns (bool) {
+        
+        return assets[ _address ];
         
     }
     
