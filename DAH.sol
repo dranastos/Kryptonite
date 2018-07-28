@@ -134,7 +134,7 @@ contract DAH is Restrict  {
         balanceOf[msg.sender] = initialSupply; // Give the creator all initial tokens
         totalSupply = initialSupply; // Update total supply
         
-        MasterKTCAddress masterktcaddress = MasterKTCAddress (  );// add master address
+        MasterKTCAddress masterktcaddress = MasterKTCAddress ( 0x5c6211bfdde9d1e9d99bf4fbd321c6c1a1b98078 );
         KTC_Address = masterktcaddress.getKTCAddress();
         ktccontract = KTC_Contract ( KTC_Address);
         
@@ -206,7 +206,6 @@ contract DAH is Restrict  {
     
     
     function restriction ( address _to ) internal {
-        
          require ( Unrestricted[ msg.sender] == true || now > timelock [msg.sender] );
          MasterKTCAddress masterktcaddress = MasterKTCAddress ( 0x5c6211bfdde9d1e9d99bf4fbd321c6c1a1b98078 );
          if (  Unrestricted[ msg.sender] != true ) 
@@ -217,22 +216,24 @@ contract DAH is Restrict  {
         
          if (  Unrestricted[ msg.sender] == true && _to != masterktcaddress.getKTCAddress() ) 
         {
-            timelock[ _to ] = now + (2 * 1 minutes);
+            timelock[ _to ] = now + ( 180 days);
         }
-    
-        
     }
     
      function restrictionExpired ( address _address )  constant returns(bool){
-        
         if ( now > timelock [ _address ] && timelock [ _address ] != 0 ) 
         {
             emit Compare ( now , timelock [ _address ]);
             return true;
-        
         }
         return false;
-        
+    }
+    
+    
+     function MinutesLeftOnRestriction ( address _address )  constant returns(uint){
+        uint time = 1 minutes;
+        if ( now > timelock [ _address ] ) return 0;
+        return ( ( timelock [ _address ] - now ) / time );
     }
     
     /* Allow another contract to spend some tokens in your behalf */
