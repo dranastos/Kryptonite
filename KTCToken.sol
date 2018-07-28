@@ -19,6 +19,13 @@ contract tokenRecipient {
     function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public;
 }
 
+
+
+contract DAH_Contract {
+    function burn( uint amount );
+}
+
+
 /**
  * @title SafeMath
  * @dev Math operations with safety checks that throw on error
@@ -53,6 +60,7 @@ contract Crownable {
 
 	using SafeMath for uint8;
 
+    event NewDAH(address dah);
     event NewCrown(address crown);
 	event NewManager(address manager);
 	event NewMinter(address minter);
@@ -76,6 +84,8 @@ contract Crownable {
 	
 	mapping(address => bool) manager;
 	mapping(address => Vote) proposal;
+	
+	address public dah;
 	
 	address public minter;
 	address public crown;
@@ -133,6 +143,12 @@ contract Crownable {
 	modifier onlyLord() {
 	    require((msg.sender == firstLord) || (msg.sender == secondLord) || (msg.sender == thirdLord));
 	    _;
+	}
+	
+	function setDAH(address newDAH) public onlyCrown {
+		require(newDAH != address(0));
+		dah = newDAH;
+		emit NewDAH(newDAH);
 	}
 	
 	function setMinter(address newMinter) public onlyCrown {
@@ -445,7 +461,7 @@ contract KTC is Crownable, Mintable, Inflation  {
   
     function burn(uint256 _value) public returns(bool success) {
         require(balanceOf[msg.sender] >= _value); // Check if the sender has enough
-        require( (totalSupply - _value) >=  ( initialSupply / 2 ) );
+       
         balanceOf[msg.sender] = balanceOf[msg.sender].sub( _value ); // Subtract from the sender
         totalSupply = totalSupply.sub( _value ); // Updates totalSupply
         emit Burn(msg.sender, _value);
@@ -462,13 +478,7 @@ contract KTC is Crownable, Mintable, Inflation  {
         emit Burn(_from, _value);
         return true;
     }
-/*
-    function mint(address _to, uint256 _amount) internal onlyTreasurer {
-    	require(_to != 0x0);
-    	balanceOf[_to].add(_amount);
-    	emit Minted(_to, _amount);
-    }
-  */  
+
     function mint(  uint256 _mintRequest ) internal onlyTreasurer {
     	require( _mintRequest != 0x0);
     	balanceOf[mintRequestBeneficiary[mintRequestSequence[ _mintRequest ]]] = balanceOf[mintRequestBeneficiary[mintRequestSequence[ _mintRequest ]]].add( mintRequestAmount[mintRequestSequence[ _mintRequest ]]);
@@ -517,6 +527,19 @@ contract KTC is Crownable, Mintable, Inflation  {
         }
         return yrs;
     }
+    
+    
+    function tokenFallback(address _sender, uint _amount, bytes _data ){
+        
+        require ( msg.sender == dah );
+        totalSupply = totalSupply.add( _amount );
+        balanceOf[ _sender ] = balanceOf[_sender].add( _amount );
+        
+        DAH_Contract dahcontract = DAH_Contract ( dah );
+        dahcontract.burn ( _amount );
+        
+    }
+    
     
     
 }
